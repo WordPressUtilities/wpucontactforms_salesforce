@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Contact Forms SalesForce\n"
-"POT-Creation-Date: 2024-04-11 16:46+0200\n"
+"POT-Creation-Date: 2024-04-12 16:22+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -78,92 +78,126 @@ msgid "Issued at"
 msgstr "Issued at"
 
 #: wpucontactforms_salesforce.php:147
+msgid "Enable sync"
+msgstr "Activer la synchronisation"
+
+#: wpucontactforms_salesforce.php:152
 msgid "Main endpoint"
 msgstr "Endpoint principal"
 
-#: wpucontactforms_salesforce.php:202
+#: wpucontactforms_salesforce.php:216
 #, php-format
 msgid "Please add the correct keys in <a href=\"%s\">Settings</a>"
 msgstr "Veuillez ajouter les clés correctes dans <a href=\"%s\">les paramètres</a>"
 
-#: wpucontactforms_salesforce.php:221 wpucontactforms_salesforce.php:228
+#: wpucontactforms_salesforce.php:235 wpucontactforms_salesforce.php:242
 msgid "Error: invalid ids"
 msgstr "Erreur : identifiants non valides"
 
-#: wpucontactforms_salesforce.php:226
+#: wpucontactforms_salesforce.php:240
 #, php-format
 msgid "Error: %s - %s"
 msgstr "Erreur : %s - %s"
 
-#: wpucontactforms_salesforce.php:237
+#: wpucontactforms_salesforce.php:251
 msgid "You are successfully logged-in"
 msgstr "Vous êtes connecté avec succès"
 
-#: wpucontactforms_salesforce.php:239
+#: wpucontactforms_salesforce.php:253
 msgid "Error: Token could not be saved"
 msgstr "Erreur : le token n’a pas pu être enregistré"
 
-#: wpucontactforms_salesforce.php:254
+#: wpucontactforms_salesforce.php:270
 msgid "It looks like you are already logged-in."
 msgstr "Il semble que vous soyez déjà connecté."
 
-#: wpucontactforms_salesforce.php:257
+#: wpucontactforms_salesforce.php:273
 msgid "Refresh token"
 msgstr "Rafraichir le token"
 
-#: wpucontactforms_salesforce.php:258
+#: wpucontactforms_salesforce.php:274
 msgid "or"
 msgstr "ou"
 
-#: wpucontactforms_salesforce.php:259
+#: wpucontactforms_salesforce.php:275
 msgid "Try to log again"
 msgstr "Essayez de vous reconnecter"
 
-#: wpucontactforms_salesforce.php:262
+#: wpucontactforms_salesforce.php:280
 msgid "Tests"
 msgstr "Tests"
 
-#: wpucontactforms_salesforce.php:264
+#: wpucontactforms_salesforce.php:283
+#, php-format
+msgid "Token was refreshed %s ago."
+msgstr "Le token a été actualisé il y a %s."
+
+#: wpucontactforms_salesforce.php:288
+msgid "Load available fields"
+msgstr "Charger les champs disponibles"
+
+#: wpucontactforms_salesforce.php:290
+msgid "Update available fields"
+msgstr "Mettre à jour les champs disponibles"
+
+#: wpucontactforms_salesforce.php:294
 msgid "Test your token"
 msgstr "Testez votre token"
 
-#: wpucontactforms_salesforce.php:266
-msgid "Create a demo contact"
-msgstr "Créer un contact de démonstration"
+#: wpucontactforms_salesforce.php:296
+#, php-format
+msgid "Create a demo %s"
+msgstr "Créer un %s de démonstration"
 
-#: wpucontactforms_salesforce.php:269
+#: wpucontactforms_salesforce.php:304
+msgid "Available fields"
+msgstr "Champs disponibles"
+
+#: wpucontactforms_salesforce.php:311
 msgid "You need to link this plugin to your account."
 msgstr "Vous devez lier ce plugin à votre compte."
 
-#: wpucontactforms_salesforce.php:270
+#: wpucontactforms_salesforce.php:312
 msgid "Click here to login"
 msgstr "Cliquez ici pour vous connecter"
 
-#: wpucontactforms_salesforce.php:278
+#: wpucontactforms_salesforce.php:334 wpucontactforms_salesforce.php:539
+msgid "Values"
+msgstr "Valeurs"
+
+#: wpucontactforms_salesforce.php:361
 msgid "Token was successfully refreshed."
 msgstr "Le token a été actualisé avec succès."
 
-#: wpucontactforms_salesforce.php:280
+#: wpucontactforms_salesforce.php:363
 msgid "Token could not be refreshed."
 msgstr "Le token n’a pas pu être actualisé."
 
-#: wpucontactforms_salesforce.php:286
+#: wpucontactforms_salesforce.php:369
 msgid "Token is successfully working."
 msgstr "Le token fonctionne correctement."
 
-#: wpucontactforms_salesforce.php:288
+#: wpucontactforms_salesforce.php:371
 msgid "Token is not working anymore."
 msgstr "Le token ne fonctionne plus."
 
-#: wpucontactforms_salesforce.php:306
+#: wpucontactforms_salesforce.php:389
 #, php-format
 msgid "A \"%s\" is <a href=\"%s\">available here</a>."
 msgstr "Un « %s » est <a href=\"%s\">disponible ici</a>."
 
-#: wpucontactforms_salesforce.php:310
+#: wpucontactforms_salesforce.php:393
 msgid "Contact could not be created."
 msgstr "Le contact n’a pas pu être créé."
 
-#: wpucontactforms_salesforce.php:321
+#: wpucontactforms_salesforce.php:432
+msgid "Available fields have been refreshed."
+msgstr "Les champs disponibles ont été mis à jour."
+
+#: wpucontactforms_salesforce.php:434
+msgid "Available fields could not be refreshed."
+msgstr "Les champs disponibles n’ont pas pu être mis à jour."
+
+#: wpucontactforms_salesforce.php:443
 msgid "Save Changes"
 msgstr "Sauvegarder"

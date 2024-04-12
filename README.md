@@ -8,12 +8,13 @@ Link WPUContactForms results to Salesforce.
 - [x] Handle sobjects/Tasks.
 - [x] Test if token is expired
 - [x] French translation.
-- [ ] Hook to WPU Contact Forms.
-- [ ] Human display of token last update
-- [ ] Enable / Disable save.
+- [x] Override API version
+- [x] Human display of token last update
+- [x] Enable / Disable save.
+- [x] Send the message field to SF
+- [x] Hook to WPU Contact Forms.
 - [ ] Github actions.
 - [ ] Alert if refresh has failed.
 - [ ] Tutorial in readme to create an app.
-- [ ] Override API version
-- [ ] Send the message field to SF
+- [ ] Log submissions
 

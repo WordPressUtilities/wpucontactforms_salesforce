@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.2.0
+Version: 0.3.0
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.2.0';
+    private $plugin_version = '0.3.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
@@ -141,6 +141,11 @@ class WPUContactFormsSalesForce {
                 'readonly' => true,
                 'label' => __('Issued at', 'wpucontactforms_salesforce')
             ),
+            'enable_salesforce_sync' => array(
+                'section' => 'config',
+                'type' => 'select',
+                'label' => __('Enable sync', 'wpucontactforms_salesforce')
+            ),
             'main_endpoint' => array(
                 'section' => 'config',
                 'default_value' => 'Contact',
@@ -168,6 +173,16 @@ class WPUContactFormsSalesForce {
             require_once __DIR__ . '/inc/WPUBaseMessages/WPUBaseMessages.php';
             $this->messages = new \wpucontactforms_salesforce\WPUBaseMessages($this->plugin_settings['id']);
         }
+
+        /* Settings Hooks */
+        $this->plugin_version = apply_filters('wpucontactforms_salesforce__plugin_version', $this->plugin_version);
+        $this->salesforce_url = apply_filters('wpucontactforms_salesforce__salesforce_url', $this->salesforce_url);
+
+        /* Watch WPU Contact Forms */
+        add_action('wpucontactforms_submit_contactform', array(&$this,
+            'wpucontactforms_submit_contactform'
+        ), 10, 2);
+
     }
 
     /* ----------------------------------------------------------
@@ -250,6 +265,8 @@ class WPUContactFormsSalesForce {
         ));
 
         if ($opt['access_token'] && $opt['refresh_token']) {
+
+            /* TOKEN */
             if (!defined('WPUCONTACTFORMS_SALESFORCE_HAS_LOGIN_MESSAGE')) {
                 echo wpautop(__('It looks like you are already logged-in.', 'wpucontactforms_salesforce'));
             }
@@ -258,18 +275,85 @@ class WPUContactFormsSalesForce {
             echo ' ' . __('or', 'wpucontactforms_salesforce') . ' ';
             echo '<a class="button" href="' . esc_url($login_url) . '">' . __('Try to log again', 'wpucontactforms_salesforce') . '</a>';
             echo '</p>';
+
+            /* TESTS */
             echo '<hr />';
             echo '<h2>' . __('Tests', 'wpucontactforms_salesforce') . '</h2>';
+
+            if ($opt['issued_at']) {
+                echo wpautop(sprintf(__('Token was refreshed %s ago.', 'wpucontactforms_salesforce'), human_time_diff($opt['issued_at'] / 1000)));
+            }
+
+            $endpoint_name = strtolower($opt['main_endpoint']);
+            $fields = get_option('wpucontactforms_salesforce_fields');
+            $label_fields = __('Load available fields', 'wpucontactforms_salesforce');
+            if (is_array($fields)) {
+                $label_fields = __('Update available fields', 'wpucontactforms_salesforce');
+            }
+
             echo '<p>';
             echo submit_button(__('Test your token', 'wpucontactforms_salesforce'), 'primary', 'test_token', false);
             echo ' ';
-            echo submit_button(__('Create a demo contact', 'wpucontactforms_salesforce'), 'primary', 'demo_contact', false);
+            echo submit_button(sprintf(__('Create a demo %s', 'wpucontactforms_salesforce'), esc_attr($endpoint_name)), 'primary', 'demo_contact', false);
+            echo ' ';
+            echo submit_button($label_fields, 'primary', 'refresh_fields', false);
             echo '</p>';
+
+            /* FIELDS */
+            if (is_array($fields)) {
+                echo '<hr />';
+                echo '<h2>' . __('Available fields', 'wpucontactforms_salesforce') . '</h2>';
+                echo '<details>';
+                echo $this->page_content__main__display_fields($fields);
+                echo '</details>';
+            }
+
         } else {
             echo wpautop(__('You need to link this plugin to your account.', 'wpucontactforms_salesforce'));
             echo wpautop('<a class="button button-primary" href="' . esc_url($login_url) . '">' . __('Click here to login', 'wpucontactforms_salesforce') . '</a>');
         }
 
+    }
+
+    public function page_content__main__display_fields($fields) {
+        $html = '';
+        $html .= '<table class="wp-list-table widefat fixed striped">';
+        $html .= '<thead>';
+        $html .= '<tr>';
+
+        foreach ($fields['keys'] as $key) {
+            $html .= '<th>' . $key . '</th>';
+        }
+        $html .= '</tr>';
+        $html .= '</thead>';
+
+        $html .= '<tbody>';
+        foreach ($fields['lines'] as $field) {
+            $html .= '<tr>';
+            $extra = '';
+            if (isset($field['extra'])) {
+                $extra .= '<details><summary>' . __('Values', 'wpucontactforms_salesforce') . '</summary>';
+                $extra .= '<ul>';
+                foreach ($field['extra'] as $extra_value) {
+                    $extra .= '<li contenteditable>' . $extra_value . '</li>';
+                }
+                $extra .= '</ul>';
+                $extra .= '</details>';
+                unset($field['extra']);
+            }
+            foreach ($field as $field_key => $field_value) {
+                $html .= '<td>';
+                $html .= '<span contenteditable>' . $field_value . '</span>';
+                if ($field_key == 'type' && $extra) {
+                    $html .= $extra;
+                }
+                $html .= '</td>';
+            }
+            $html .= '</tr>';
+        }
+        $html .= '</tbody>';
+        $html .= '</table>';
+        return $html;
     }
 
     public function page_action__main() {
@@ -310,6 +394,45 @@ class WPUContactFormsSalesForce {
                     $this->set_message('demo_contact_error', __('Contact could not be created.', 'wpucontactforms_salesforce'), 'error');
                 }
             }
+        }
+
+        if (isset($_POST['refresh_fields'])) {
+            $this->page_action__main__refresh_fields();
+        }
+    }
+
+    function page_action__main__refresh_fields() {
+        $opt = $this->settings_obj->get_settings();
+        $fields = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/describe', array(), array('method' => 'GET'));
+        if (is_array($fields) && isset($fields['fields'])) {
+            usort($fields['fields'], function ($a, $b) {
+                return strcmp(strtolower($a['name']), strtolower($b['name']));
+            });
+
+            $keys = array('name', 'label', 'type');
+
+            $final_fields = array(
+                'keys' => array('name', 'label', 'type'),
+                'lines' => array()
+            );
+
+            foreach ($fields['fields'] as $field) {
+                $line = array();
+                foreach ($keys as $key) {
+                    $line[$key] = $field[$key];
+                    if ($key == 'type' && $field[$key] == 'picklist' && isset($field['picklistValues']) && $field['picklistValues']) {
+                        $line['extra'] = array();
+                        foreach ($field['picklistValues'] as $picklistValue) {
+                            $line['extra'][] = $picklistValue['value'];
+                        }
+                    }
+                }
+                $final_fields['lines'][] = $line;
+            }
+            update_option('wpucontactforms_salesforce_fields', $final_fields, false);
+            $this->set_message('refresh_fields_success', __('Available fields have been refreshed.', 'wpucontactforms_salesforce'), 'updated');
+        } else {
+            $this->set_message('refresh_fields_error', __('Available fields could not be refreshed.', 'wpucontactforms_salesforce'), 'error');
         }
     }
 
@@ -360,7 +483,7 @@ class WPUContactFormsSalesForce {
     ---------------------------------------------------------- */
 
     /* Refresh token */
-    function refresh_token() {
+    public function refresh_token() {
         $opt = $this->settings_obj->get_settings();
         if (!$opt['access_token'] || !$opt['refresh_token']) {
             return false;
@@ -383,7 +506,7 @@ class WPUContactFormsSalesForce {
     }
 
     /* Test token */
-    function test_token() {
+    public function test_token() {
         $opt = $this->settings_obj->get_settings();
         if (!$opt['main_endpoint']) {
             return false;
@@ -394,10 +517,41 @@ class WPUContactFormsSalesForce {
     }
 
     /* ----------------------------------------------------------
-      Calls
+      Submit helper
     ---------------------------------------------------------- */
 
-    function call_salesforce($request_uri, $fields = array(), $args = array()) {
+    function wpucontactforms_submit_contactform($form) {
+        $opt = $this->settings_obj->get_settings();
+        if (!$opt['enable_salesforce_sync']) {
+            return;
+        }
+        $values = array();
+        $note_content = '';
+        foreach ($form->contact_fields as $field) {
+            if (isset($field['api_content'])) {
+                $note_content .= "\n\n" . $field['label'] . ":\n" . $field['value'];
+            }
+            if (!isset($field['api_field_name']) || !$field['api_field_name']) {
+                continue;
+            }
+            $values[$field['api_field_name']] = html_entity_decode($field['value']);
+        }
+
+        $note_content .= "\n\n" . __('Values', 'wpucontactforms_salesforce') . ":\n" . json_encode($values, JSON_PRETTY_PRINT);
+
+        $this->create_or_update_contact($values, array(
+            'task_create' => false,
+            'note_create' => true,
+            'note_title' => '[' . get_bloginfo('name') . '] ' . $form->options['name'],
+            'note_content' => trim($note_content)
+        ));
+    }
+
+    /* ----------------------------------------------------------
+      Global call helper
+    ---------------------------------------------------------- */
+
+    public function call_salesforce($request_uri, $fields = array(), $args = array()) {
         $opt = $this->settings_obj->get_settings();
         if (!$opt['access_token'] || !$opt['instance_url']) {
             return false;
@@ -422,6 +576,11 @@ class WPUContactFormsSalesForce {
         }
         $request = wp_remote_request($call_url, $request_args);
         $req_body = wp_remote_retrieve_body($request);
+
+        if (isset($request['response']) && $request['response']['code'] != 200) {
+            error_log('WPUCONTACTFORMS_SALESFORCE ERROR : ' . $args['method'] . ' - ' . $request_uri . ' - ' . $request['body'] . ' - ' . json_encode($request['response']));
+        }
+
         if (in_array($args['method'], array('HEAD', 'PATCH')) && isset($request['response'])) {
             return $request['response'];
         }
@@ -438,39 +597,79 @@ class WPUContactFormsSalesForce {
       Contact helpers
     ---------------------------------------------------------- */
 
-    function create_or_update_contact($fields) {
+    public function create_or_update_contact($fields, $args = array()) {
         $opt = $this->settings_obj->get_settings();
+
+        if (!isset($fields['Email'])) {
+            return false;
+        }
+
+        $default_args = array(
+            'task_create' => true,
+            'task_title' => 'Website Form',
+            'task_content' => json_encode($fields, JSON_PRETTY_PRINT),
+            'note_create' => true,
+            'note_title' => 'Website Form',
+            'note_content' => json_encode($fields, JSON_PRETTY_PRINT)
+        );
+        if (!is_array($args)) {
+            $args = array();
+        }
+        $args = array_merge($default_args, $args);
 
         /* TEST IF CONTACT EXISTS */
         $user_id = $this->search_contact($fields['Email']);
-
+        $user = false;
         if ($user_id) {
             /* Update */
-            unset($fields['Email']);
-            $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/' . $user_id, $fields, array('method' => 'PATCH'));
+            $user = $this->update_contact($user_id, $fields);
         } else {
             /* Create */
             $user = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']), $fields, array('method' => 'POST'));
-            if (is_array($user) && isset($user['Id'])) {
-                $user_id = $user['Id'];
+            if (!is_array($user)) {
+                $user = json_decode($user, 1);
+                if (is_array($user) && isset($user[0]) && isset($user[0]['errorCode']) && $user[0]['errorCode'] == 'DUPLICATES_DETECTED') {
+                    $duplicate = $user[0]['duplicateResult']['matchResults'][0];
+                    if ($duplicate['entityType'] == $opt['main_endpoint'] && count($duplicate['matchRecords']) && $duplicate['matchRecords'][0]['matchConfidence'] > 90) {
+                        $user_id = $duplicate['matchRecords'][0]['record']['Id'];
+                        $user = $this->update_contact($user_id, $fields);
+                    }
+                }
             }
+        }
+
+        if (is_array($user) && isset($user['Id'])) {
+            $user_id = $user['Id'];
         }
 
         if (!$user_id) {
             return false;
         }
 
-        /* Add a note to  */
-        $this->call_salesforce('sobjects/Note/', array(
-            "ParentId" => $user_id,
-            "Title" => "Website Form",
-            "Body" => json_encode($fields, JSON_PRETTY_PRINT)
-        ), array('method' => 'POST'));
+        /* Add a note to the user */
+        if ($args['note_create']) {
+            $this->create_note($user_id, $args['note_title'], $args['note_content']);
+        }
+
+        /* Add a task to the user */
+        if ($args['task_create']) {
+            $this->create_task($user_id, $args['task_title'], $args['task_content']);
+        }
 
         return $user_id;
     }
 
-    function search_contact($emails) {
+    function update_contact($user_id, $fields) {
+        $opt = $this->settings_obj->get_settings();
+        if (isset($fields['Email'])) {
+            unset($fields['Email']);
+        }
+        error_log(json_encode($fields));
+        $user = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/' . $user_id, $fields, array('method' => 'PATCH'));
+
+    }
+
+    public function search_contact($emails) {
         $opt = $this->settings_obj->get_settings();
 
         if (!is_array($emails)) {
@@ -487,6 +686,34 @@ class WPUContactFormsSalesForce {
 
         return $req['records'][0]['Id'];
 
+    }
+
+    /* ----------------------------------------------------------
+      Notes
+    ---------------------------------------------------------- */
+
+    public function create_note($parent_id, $title, $content) {
+        return $this->call_salesforce('sobjects/Note/', array(
+            "ParentId" => $parent_id,
+            "Title" => $title,
+            "Body" => $content
+        ), array(
+            'method' => 'POST'
+        ));
+    }
+
+    /* ----------------------------------------------------------
+      Tasks
+    ---------------------------------------------------------- */
+
+    public function create_task($parent_id, $title, $content) {
+        return $this->call_salesforce('sobjects/Task/', array(
+            "WhoId" => $parent_id,
+            "Subject" => $title,
+            "Description" => $content
+        ), array(
+            'method' => 'POST'
+        ));
     }
 
 }
