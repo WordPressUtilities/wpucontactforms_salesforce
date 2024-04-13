@@ -1,5 +1,7 @@
 # WPU Contact Forms SalesForce
 
+[![PHP workflow](https://github.com/WordPressUtilities/wpucontactforms_salesforce/actions/workflows/php.yml/badge.svg 'PHP workflow')](https://github.com/WordPressUtilities/wpucontactforms_salesforce/actions)
+
 Link WPUContactForms results to Salesforce.
 
 ## Roadmap
@@ -13,8 +15,5 @@ Link WPUContactForms results to Salesforce.
 - [x] Enable / Disable save.
 - [x] Send the message field to SF
 - [x] Hook to WPU Contact Forms.
-- [ ] Github actions.
-- [ ] Alert if refresh has failed.
+- [x] Github actions.
 - [ ] Tutorial in readme to create an app.
-- [ ] Log submissions
-

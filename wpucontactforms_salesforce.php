@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.3.0
+Version: 0.3.1
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.3.0';
+    private $plugin_version = '0.3.1';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
@@ -539,12 +539,17 @@ class WPUContactFormsSalesForce {
 
         $note_content .= "\n\n" . __('Values', 'wpucontactforms_salesforce') . ":\n" . json_encode($values, JSON_PRETTY_PRINT);
 
-        $this->create_or_update_contact($values, array(
+        $values = apply_filters('wpucontactforms_salesforce__submit_contactform__values', $values, $form);
+
+        $user_id = $this->create_or_update_contact($values, array(
             'task_create' => false,
             'note_create' => true,
             'note_title' => '[' . get_bloginfo('name') . '] ' . $form->options['name'],
             'note_content' => trim($note_content)
         ));
+
+        do_action('wpucontactforms_salesforce__after_submit_contactform', $user_id, $values, $form);
+
     }
 
     /* ----------------------------------------------------------
@@ -564,6 +569,11 @@ class WPUContactFormsSalesForce {
         }
 
         $call_url = $opt['instance_url'] . '/services/data/' . $this->salesforce_api_version . '/' . $request_uri;
+
+        $args = apply_filters('wpucontactforms_salesforce__call_salesforce__args', $args, $opt, $fields, $request_uri);
+        $fields = apply_filters('wpucontactforms_salesforce__call_salesforce__fields', $fields, $opt, $request_uri, $args);
+        $call_url = apply_filters('wpucontactforms_salesforce__call_salesforce__url', $call_url, $opt, $fields, $request_uri, $args);
+
         $request_args = array(
             'method' => $args['method'],
             'headers' => array(
@@ -574,8 +584,12 @@ class WPUContactFormsSalesForce {
         if ($fields) {
             $request_args['body'] = json_encode($fields);
         }
+
+        $request_args = apply_filters('wpucontactforms_salesforce__call_salesforce__request_args', $request_args, $opt, $fields, $request_uri, $args);
         $request = wp_remote_request($call_url, $request_args);
         $req_body = wp_remote_retrieve_body($request);
+
+        do_action('wpucontactforms_salesforce__call_salesforce__after', $request, $opt, $fields, $request_uri, $args);
 
         if (isset($request['response']) && $request['response']['code'] != 200) {
             error_log('WPUCONTACTFORMS_SALESFORCE ERROR : ' . $args['method'] . ' - ' . $request_uri . ' - ' . $request['body'] . ' - ' . json_encode($request['response']));
@@ -616,6 +630,9 @@ class WPUContactFormsSalesForce {
             $args = array();
         }
         $args = array_merge($default_args, $args);
+
+        $args = apply_filters('wpucontactforms_salesforce__create_or_update_contact__args', $args);
+        $fields = apply_filters('wpucontactforms_salesforce__create_or_update_contact__fields', $fields);
 
         /* TEST IF CONTACT EXISTS */
         $user_id = $this->search_contact($fields['Email']);
