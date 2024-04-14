@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.3.1
+Version: 0.3.2
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.3.1';
+    private $plugin_version = '0.3.2';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
@@ -209,6 +209,9 @@ class WPUContactFormsSalesForce {
       Admin pages
     ---------------------------------------------------------- */
 
+    /**
+     * Renders the main content of the plugin page.
+     */
     public function page_content__main() {
         $opt = $this->settings_obj->get_settings();
 
@@ -247,6 +250,8 @@ class WPUContactFormsSalesForce {
 
             /* Save token */
             $this->save_token_from_data($data);
+            $opt = $this->settings_obj->get_settings();
+
             if (isset($data['access_token'], $data['refresh_token'])) {
                 define('WPUCONTACTFORMS_SALESFORCE_HAS_LOGIN_MESSAGE', 1);
                 echo wpautop(__('You are successfully logged-in', 'wpucontactforms_salesforce'));
@@ -315,6 +320,13 @@ class WPUContactFormsSalesForce {
 
     }
 
+
+    /**
+     * Generates and returns the HTML content for displaying fields in a table format.
+     *
+     * @param array $fields The array of fields to be displayed.
+     * @return string The generated HTML content.
+     */
     public function page_content__main__display_fields($fields) {
         $html = '';
         $html .= '<table class="wp-list-table widefat fixed striped">';
@@ -401,6 +413,10 @@ class WPUContactFormsSalesForce {
         }
     }
 
+    /**
+     * Refreshes the available fields for the main endpoint in the Salesforce integration.
+     * @return void
+     */
     function page_action__main__refresh_fields() {
         $opt = $this->settings_obj->get_settings();
         $fields = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/describe', array(), array('method' => 'GET'));
@@ -681,7 +697,6 @@ class WPUContactFormsSalesForce {
         if (isset($fields['Email'])) {
             unset($fields['Email']);
         }
-        error_log(json_encode($fields));
         $user = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/' . $user_id, $fields, array('method' => 'PATCH'));
 
     }
