@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.3.2
+Version: 0.3.3
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.3.2';
+    private $plugin_version = '0.3.3';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
@@ -144,12 +144,22 @@ class WPUContactFormsSalesForce {
             'enable_salesforce_sync' => array(
                 'section' => 'config',
                 'type' => 'select',
+                'datas' => array(
+                    __('No', 'wpucontactforms_salesforce'),
+                    __('Yes', 'wpucontactforms_salesforce')
+                ),
                 'label' => __('Enable sync', 'wpucontactforms_salesforce')
             ),
             'main_endpoint' => array(
                 'section' => 'config',
                 'default_value' => 'Contact',
                 'label' => __('Main endpoint', 'wpucontactforms_salesforce')
+            ),
+            'secondary_endpoint' => array(
+                'section' => 'config',
+                'default_value' => 'Contact',
+                'label' => __('Secondary endpoint', 'wpucontactforms_salesforce'),
+                'help' => __('If a duplicate is found on this endpoint, this duplicate could be updated there instead of the main endpoint.', 'wpucontactforms_salesforce')
             )
         );
         require_once __DIR__ . '/inc/WPUBaseSettings/WPUBaseSettings.php';
@@ -320,7 +330,6 @@ class WPUContactFormsSalesForce {
 
     }
 
-
     /**
      * Generates and returns the HTML content for displaying fields in a table format.
      *
@@ -390,22 +399,22 @@ class WPUContactFormsSalesForce {
             $domain = $urlparts['host'];
 
             $user_id = $this->create_or_update_contact(array(
+                'Company' => 'WordPressCompany',
                 'FirstName' => 'WordPressFirstName',
                 'LastName' => 'WordPressLastName',
                 'Email' => 'wordpress@' . $domain,
                 'Description' => 'Update : ' . time()
             ));
 
-            if ($user_id) {
-                if ($this->test_token()) {
-                    $opt = $this->settings_obj->get_settings();
-                    $success_str = __('A "%s" is <a href="%s">available here</a>.', 'wpucontactforms_salesforce');
-                    $success_url = $opt['instance_url'] . '/lightning/r/' . esc_attr($opt['main_endpoint']) . '/' . $user_id . '/view';
-                    $this->set_message('demo_contact_success', sprintf($success_str, $opt['main_endpoint'], $success_url), 'updated');
-                } else {
-                    $this->set_message('demo_contact_error', __('Contact could not be created.', 'wpucontactforms_salesforce'), 'error');
-                }
+            if ($user_id && $this->test_token()) {
+                $opt = $this->settings_obj->get_settings();
+                $success_str = __('A "%s" is <a href="%s">available here</a>.', 'wpucontactforms_salesforce');
+                $success_url = $opt['instance_url'] . '/lightning/r/' . esc_attr($opt['main_endpoint']) . '/' . $user_id . '/view';
+                $this->set_message('demo_contact_success', sprintf($success_str, $opt['main_endpoint'], $success_url), 'updated');
+            } else {
+                $this->set_message('demo_contact_error', __('Contact could not be created.', 'wpucontactforms_salesforce'), 'error');
             }
+
         }
 
         if (isset($_POST['refresh_fields'])) {
@@ -661,18 +670,24 @@ class WPUContactFormsSalesForce {
             $user = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']), $fields, array('method' => 'POST'));
             if (!is_array($user)) {
                 $user = json_decode($user, 1);
-                if (is_array($user) && isset($user[0]) && isset($user[0]['errorCode']) && $user[0]['errorCode'] == 'DUPLICATES_DETECTED') {
-                    $duplicate = $user[0]['duplicateResult']['matchResults'][0];
-                    if ($duplicate['entityType'] == $opt['main_endpoint'] && count($duplicate['matchRecords']) && $duplicate['matchRecords'][0]['matchConfidence'] > 90) {
-                        $user_id = $duplicate['matchRecords'][0]['record']['Id'];
-                        $user = $this->update_contact($user_id, $fields);
-                    }
+            }
+
+            if (is_array($user) && isset($user[0]) && isset($user[0]['errorCode']) && $user[0]['errorCode'] == 'DUPLICATES_DETECTED') {
+                $duplicate = $user[0]['duplicateResult']['matchResults'][0];
+                if (($duplicate['entityType'] == $opt['main_endpoint'] || $duplicate['entityType'] == $opt['secondary_endpoint']) && count($duplicate['matchRecords']) && $duplicate['matchRecords'][0]['matchConfidence'] > 90) {
+                    $user_id = $duplicate['matchRecords'][0]['record']['Id'];
+                    $user = $this->update_contact($user_id, $fields);
                 }
             }
         }
 
-        if (is_array($user) && isset($user['Id'])) {
-            $user_id = $user['Id'];
+        if (is_array($user)) {
+            if (isset($user['Id'])) {
+                $user_id = $user['Id'];
+            }
+            if (isset($user['id'])) {
+                $user_id = $user['id'];
+            }
         }
 
         if (!$user_id) {
@@ -692,12 +707,16 @@ class WPUContactFormsSalesForce {
         return $user_id;
     }
 
-    function update_contact($user_id, $fields) {
+    function update_contact($user_id, $fields, $args = array()) {
+        if (!is_array($args)) {
+            $args = array();
+        }
+        $main_endpoint = isset($args['main_endpoint']) ? $args['main_endpoint'] : $opt['main_endpoint'];
         $opt = $this->settings_obj->get_settings();
         if (isset($fields['Email'])) {
             unset($fields['Email']);
         }
-        $user = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/' . $user_id, $fields, array('method' => 'PATCH'));
+        $user = $this->call_salesforce('sobjects/' . esc_attr($main_endpoint) . '/' . $user_id, $fields, array('method' => 'PATCH'));
 
     }
 
