@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.3.3
+Version: 0.3.4
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,10 +21,15 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.3.3';
+    private $plugin_version = '0.3.4';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
+    );
+    private $success_codes = array(
+        200,
+        201,
+        204
     );
     private $salesforce_api_version = 'v60.0';
     private $salesforce_url = 'https://login.salesforce.com/services/oauth2/';
@@ -538,7 +543,7 @@ class WPUContactFormsSalesForce {
         }
 
         $response = $this->call_salesforce('sobjects/' . esc_attr($opt['main_endpoint']) . '/describe', array(), array('method' => 'HEAD'));
-        return (is_array($response) && isset($response['code']) && $response['code'] == 200);
+        return (is_array($response) && isset($response['code']) && in_array($response['code'], $this->success_codes));
     }
 
     /* ----------------------------------------------------------
@@ -616,7 +621,7 @@ class WPUContactFormsSalesForce {
 
         do_action('wpucontactforms_salesforce__call_salesforce__after', $request, $opt, $fields, $request_uri, $args);
 
-        if (isset($request['response']) && $request['response']['code'] != 200) {
+        if (isset($request['response']) && !in_array($request['response']['code'], $this->success_codes)) {
             error_log('WPUCONTACTFORMS_SALESFORCE ERROR : ' . $args['method'] . ' - ' . $request_uri . ' - ' . $request['body'] . ' - ' . json_encode($request['response']));
         }
 
@@ -676,7 +681,9 @@ class WPUContactFormsSalesForce {
                 $duplicate = $user[0]['duplicateResult']['matchResults'][0];
                 if (($duplicate['entityType'] == $opt['main_endpoint'] || $duplicate['entityType'] == $opt['secondary_endpoint']) && count($duplicate['matchRecords']) && $duplicate['matchRecords'][0]['matchConfidence'] > 90) {
                     $user_id = $duplicate['matchRecords'][0]['record']['Id'];
-                    $user = $this->update_contact($user_id, $fields);
+                    $user = $this->update_contact($user_id, $fields, array(
+                        'main_endpoint' => $duplicate['entityType']
+                    ));
                 }
             }
         }
@@ -711,8 +718,9 @@ class WPUContactFormsSalesForce {
         if (!is_array($args)) {
             $args = array();
         }
-        $main_endpoint = isset($args['main_endpoint']) ? $args['main_endpoint'] : $opt['main_endpoint'];
         $opt = $this->settings_obj->get_settings();
+        $main_endpoint = isset($args['main_endpoint']) ? $args['main_endpoint'] : $opt['main_endpoint'];
+        $fields = apply_filters('wpucontactforms_salesforce__update_contact__fields', $fields, $user_id, $main_endpoint, $args);
         if (isset($fields['Email'])) {
             unset($fields['Email']);
         }
