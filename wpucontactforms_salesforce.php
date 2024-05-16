@@ -4,7 +4,7 @@ Plugin Name: WPU Contact Forms Salesforce
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_salesforce
 Description: Link WPUContactForms results to Salesforce.
-Version: 0.3.4
+Version: 0.4.0
 Author: Darklg
 Author URI: https://github.com/darklg
 Text Domain: wpucontactforms_salesforce
@@ -21,11 +21,12 @@ if (!defined('ABSPATH')) {
 }
 
 class WPUContactFormsSalesForce {
-    private $plugin_version = '0.3.4';
+    private $plugin_version = '0.4.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_salesforce',
         'name' => 'WPU Contact Forms Salesforce'
     );
+    private $user_level_login = 'edit_users';
     private $success_codes = array(
         200,
         201,
@@ -52,16 +53,22 @@ class WPUContactFormsSalesForce {
             load_muplugin_textdomain('wpucontactforms_salesforce', dirname(plugin_basename(__FILE__)) . '/lang/');
         }
         $this->plugin_description = __('Link WPUContactForms results to Salesforce.', 'wpucontactforms_salesforce');
+
+        # HOOKS
+        $this->user_level_login = apply_filters('wpucontactforms_salesforce__user_level_login', $this->user_level_login);
+
         # TOOLBOX
         require_once __DIR__ . '/inc/WPUBaseToolbox/WPUBaseToolbox.php';
         $this->basetoolbox = new \wpucontactforms_salesforce\WPUBaseToolbox(array(
             'need_form_js' => false
         ));
+
         # CUSTOM PAGE
         $admin_pages = array(
             'main' => array(
                 'icon_url' => 'dashicons-admin-generic',
                 'menu_name' => $this->plugin_settings['name'],
+                'level' => $this->user_level_login,
                 'name' => __('Main', 'wpucontactforms_salesforce'),
                 'settings_link' => true,
                 'settings_name' => __('Settings', 'wpucontactforms_salesforce'),
@@ -100,6 +107,7 @@ class WPUContactFormsSalesForce {
             'plugin_name' => $this->plugin_settings['name'],
             'plugin_id' => $this->plugin_settings['id'],
             'option_id' => $this->plugin_settings['id'] . '_options',
+            'user_cap' => $this->user_level_login,
             'sections' => array(
                 'keys' => array(
                     'name' => __('Keys', 'wpucontactforms_salesforce')
